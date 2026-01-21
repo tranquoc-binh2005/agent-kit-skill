@@ -250,26 +250,37 @@ async function runInit() {
         const kitRoot = path.join(__dirname, '../templates');
         const currentDir = process.cwd();
 
-        // 0. Download Codebase
-        if (answers.downloadCodebase && answers.environment !== 'docker') {
+        // 0. Download Codebase (works for both Docker and Local environments)
+        if (answers.downloadCodebase) {
             spinner.stop();
 
             // Handle multiple downloads for Fullstack
             if (Array.isArray(answers.stack)) {
                 console.log(chalk.cyan(`\n> Downloading Fullstack Codebase...`));
 
+                const projectName = path.basename(currentDir);
+
                 // 1. Frontend
                 console.log(chalk.dim(`  - Frontend: ${answers.frontendStack}`));
-                // Create subfolder 'frontend' or just download to root? 
-                // Usually separates folders 'client' / 'server'.
-                // Let's force subdirectories for fullstack.
                 await fs.ensureDir(path.join(currentDir, 'frontend'));
-                const feDownloaded = await runDownload(answers.frontendStack, path.join(currentDir, 'frontend'), answers.languageVariant);
+                const feDownloaded = await runDownload(
+                    answers.frontendStack,
+                    path.join(currentDir, 'frontend'),
+                    answers.languageVariant,
+                    answers.database,
+                    `${projectName}_frontend`
+                );
 
                 // 2. Backend
                 console.log(chalk.dim(`  - Backend: ${answers.backendStack}`));
                 await fs.ensureDir(path.join(currentDir, 'backend'));
-                const beDownloaded = await runDownload(answers.backendStack, path.join(currentDir, 'backend'), answers.languageVariant);
+                const beDownloaded = await runDownload(
+                    answers.backendStack,
+                    path.join(currentDir, 'backend'),
+                    answers.languageVariant,
+                    answers.database,
+                    `${projectName}_backend`
+                );
 
                 if (feDownloaded && beDownloaded) {
                     console.log(chalk.green(`\n> Fullstack setup complete (frontend/ & backend/).`));
@@ -279,7 +290,14 @@ async function runInit() {
 
             } else {
                 // Single stack download
-                const downloaded = await runDownload(answers.stack, currentDir, answers.languageVariant);
+                const projectName = path.basename(currentDir);
+                const downloaded = await runDownload(
+                    answers.stack,
+                    currentDir,
+                    answers.languageVariant,
+                    answers.database,
+                    projectName
+                );
                 if (downloaded) {
                     console.log(chalk.green(`\n> Codebase setup complete.`));
                 } else {
@@ -287,12 +305,6 @@ async function runInit() {
                 }
             }
             spinner.start();
-
-            if (downloaded) {
-                console.log(chalk.green(`\n> Codebase setup complete.`));
-            } else {
-                console.log(chalk.yellow(`\n! Codebase download skipped or not supported for ${answers.stack}.`));
-            }
         }
 
         // Setup based on IDE
@@ -304,7 +316,7 @@ async function runInit() {
             await setupAntigravity(kitRoot, currentDir, answers);
         }
 
-        // Setup Docker if requested
+        // Setup Docker if requested (after codebase download)
         if (answers.environment === 'docker' && answers.stack) {
             const projectName = path.basename(currentDir);
 
@@ -318,12 +330,12 @@ async function runInit() {
 
             console.log(chalk.cyan(`\n> ${msg.dockerSetup}`));
 
-            // 3. Basic Codebase Scaffolding for Docker
-            if (answers.downloadCodebase || answers.environment === 'docker') {
+            // 3. Only scaffold if codebase was NOT downloaded
+            if (!answers.downloadCodebase) {
                 const scaffoldFiles = getScaffold(answers.stack);
                 for (const [filePath, content] of Object.entries(scaffoldFiles)) {
                     const targetPath = path.join(currentDir, filePath);
-                    if (!await fs.pathExists(targetPath)) { // Don't overwrite existing code
+                    if (!await fs.pathExists(targetPath)) {
                         await fs.outputFile(targetPath, content);
                     }
                 }

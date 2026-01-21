@@ -4,10 +4,11 @@ import fs from 'fs-extra';
 import path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
+import { generateEnvFile } from './envGenerator.js';
 
 const TEMP_DIR_NAME = 'temp_agent_kit_download';
 
-async function downloadCodebase(stack, currentDir, languageVariant = 'ts') {
+async function downloadCodebase(stack, currentDir, languageVariant = 'ts', database = null, projectName = null) {
     const isTs = languageVariant === 'ts';
 
     let command = '';
@@ -83,6 +84,40 @@ async function downloadCodebase(stack, currentDir, languageVariant = 'ts') {
             }
             // 3. Cleanup temp dir
             await fs.remove(tempPath);
+
+            // 4. Verify node_modules exists for Node.js projects (NestJS, Next.js, React, Vue, Angular, Nuxt)
+            const needsNodeModules = ['nestjs', 'nextjs', 'react', 'vue', 'angular', 'nuxt', 'nuxt-laravel'];
+            if (needsNodeModules.includes(stack)) {
+                const nodeModulesPath = path.join(currentDir, 'node_modules');
+                if (!await fs.pathExists(nodeModulesPath)) {
+                    spinner.text = 'Installing dependencies...';
+                    execSync('npm install', { stdio: 'inherit', cwd: currentDir });
+                }
+            }
+
+            // 5. Customize default messages for specific stacks
+            if (stack === 'nestjs') {
+                const appServicePath = path.join(currentDir, 'src/app.service.ts');
+                if (await fs.pathExists(appServicePath)) {
+                    const customMessage = `import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return 'Hello World, I\\'m Teodevlor, cảm ơn đã sử dụng và góp ý.';
+  }
+}
+`;
+                    await fs.writeFile(appServicePath, customMessage);
+                }
+            }
+
+            // 6. Generate .env file with database configuration
+            if (database && database !== 'none' && projectName) {
+                spinner.text = 'Configuring environment variables...';
+                await generateEnvFile(stack, database, projectName, currentDir);
+            }
+
             spinner.succeed(chalk.green(`Codebase for ${stack} downloaded successfully!`));
             return true;
         } else {
