@@ -61,6 +61,19 @@ COPY . .
 
 CMD ["npm", "run", "dev"]
 `,
+    react: `
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+CMD ["npm", "run", "dev"]
+`,
     vue: `
 FROM node:18-alpine
 
@@ -74,6 +87,19 @@ COPY . .
 
 CMD ["npm", "run", "dev"]
 `,
+    angular: `
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+CMD ["npm", "start", "--", "--host", "0.0.0.0", "--disable-host-check"]
+`,
     python: `
 FROM python:3.9
 
@@ -85,6 +111,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+`,
+    express: `
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+CMD ["node", "index.js"]
 `
 };
 
@@ -96,7 +135,8 @@ const portMapping = {
     vue: "5173",
     python: "8000",
     express: "3000",
-    react: "5173"
+    react: "5173",
+    angular: "4200"
 };
 
 function generateDockerfile(stack) {
@@ -225,6 +265,12 @@ const scaffolds = {
         'index.html': `<!DOCTYPE html><html><body><div id="app"></div><script type="module" src="/src/main.js"></script></body></html>`,
         'src/main.js': `import { createApp } from 'vue';\nimport App from './App.vue';\ncreateApp(App).mount('#app');`,
         'src/App.vue': `<template><h1>Hello Agent Kit Vue - Dockerized!</h1></template>`
+    },
+    angular: {
+        'package.json': `{\n  "name": "agent-kit-angular",\n  "scripts": {\n    "ng": "ng",\n    "start": "ng serve",\n    "build": "ng build",\n    "watch": "ng build --watch --configuration development",\n    "test": "ng test"\n  },\n  "dependencies": {\n    "@angular/animations": "^17.0.0",\n    "@angular/common": "^17.0.0",\n    "@angular/compiler": "^17.0.0",\n    "@angular/core": "^17.0.0",\n    "@angular/forms": "^17.0.0",\n    "@angular/platform-browser": "^17.0.0",\n    "@angular/platform-browser-dynamic": "^17.0.0",\n    "@angular/router": "^17.0.0",\n    "rxjs": "~7.8.0",\n    "tslib": "^2.3.0",\n    "zone.js": "~0.14.0"\n  },\n  "devDependencies": {\n    "@angular-devkit/build-angular": "^17.0.0",\n    "@angular/cli": "^17.0.0",\n    "@angular/compiler-cli": "^17.0.0",\n    "@types/jasmine": "~5.1.0",\n    "@types/node": "^18.18.0",\n    "jasmine-core": "~5.1.0",\n    "karma": "~6.4.0",\n    "karma-chrome-launcher": "~3.2.0",\n    "karma-coverage": "~2.2.0",\n    "karma-jasmine": "~5.1.0",\n    "karma-jasmine-html-reporter": "~2.1.0",\n    "typescript": "~5.2.0"\n  }\n}`,
+        'src/main.ts': `import { bootstrapApplication } from '@angular/platform-browser';\nimport { AppComponent } from './app/app.component';\n\nbootstrapApplication(AppComponent).catch((err) => console.error(err));`,
+        'src/index.html': `<!doctype html>\n<html lang="en">\n<head>\n  <meta charset="utf-8">\n  <title>Agent Kit Angular</title>\n  <base href="/">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n</head>\n<body>\n  <app-root></app-root>\n</body>\n</html>`,
+        'src/app/app.component.ts': `import { Component } from '@angular/core';\nimport { CommonModule } from '@angular/common';\nimport { RouterOutlet } from '@angular/router';\n\n@Component({\n  selector: 'app-root',\n  standalone: true,\n  imports: [CommonModule, RouterOutlet],\n  template: '<h1>Hello Agent Kit Angular - Dockerized!</h1>',\n  styles: [],\n})\nexport class AppComponent {\n  title = 'agent-kit-angular';\n}`
     }
 };
 

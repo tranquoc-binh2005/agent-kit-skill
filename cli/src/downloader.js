@@ -7,64 +7,67 @@ import ora from 'ora';
 
 const TEMP_DIR_NAME = 'temp_agent_kit_download';
 
-async function downloadCodebase(stack, currentDir) {
-    const commands = {
-        // NestJS
-        'nestjs': `npx -y @nestjs/cli new ${TEMP_DIR_NAME} --package-manager npm --skip-git`,
+async function downloadCodebase(stack, currentDir, languageVariant = 'ts') {
+    const isTs = languageVariant === 'ts';
 
-        // Laravel
-        'laravel': `composer create-project laravel/laravel ${TEMP_DIR_NAME}`,
+    let command = '';
 
-        // Next.js
-        'nextjs': `npx -y create-next-app@latest ${TEMP_DIR_NAME} --typescript --eslint --tailwind --no-src-dir --app --import-alias "@/*"`,
+    switch (stack) {
+        case 'nestjs':
+            // NestJS default is TS. JS mode requires flag --language js (or similar, but standard is TS).
+            // Actually Nest CLI defaults to TS.
+            // Documentation says: nest new project-name --language js (if supported in version).
+            // But let's check recent Nest CLI. Yes, -l js or --language js.
+            command = `npx -y @nestjs/cli new ${TEMP_DIR_NAME} --package-manager npm --skip-git ${isTs ? '' : '--language js'}`;
+            break;
 
-        // React + Vite
-        'react': `npm create vite@latest ${TEMP_DIR_NAME} -- --template react-ts`,
+        case 'laravel':
+            // PHP only, ignore JS/TS variant or treat as N/A
+            command = `composer create-project laravel/laravel ${TEMP_DIR_NAME}`;
+            break;
 
-        // Vue + Vite
-        'vue': `npm create vite@latest ${TEMP_DIR_NAME} -- --template vue-ts`,
+        case 'nextjs':
+            // Next.js: --typescript or --javascript
+            command = `npx -y create-next-app@latest ${TEMP_DIR_NAME} ${isTs ? '--typescript' : '--javascript'} --eslint --tailwind --no-src-dir --app --import-alias "@/*" --yes`;
+            break;
 
-        // Nuxt
-        'nuxt-laravel': `npx -y nuxi@latest init ${TEMP_DIR_NAME} --packageManager npm`, // Mapping nuxt-laravel to Nuxt for frontend part? Or fullstack? Assuming Nuxt here.
-        'vue': `npx -y nuxi@latest init ${TEMP_DIR_NAME} --packageManager npm`, // Overlap with Vue option? If stack is 'vue', user might mean Vue or Nuxt.
-        // Based on CLI choices: "Vue 3 / Nuxt 3" -> value: 'vue'.
-        // We should ask or default. Let's default to Vite Vue 3 for simplicity, or ask?
-        // User said: "vue + vite, nuxtjs các kiểu".
-        // In index.js lines 233: { name: 'Vue 3 / Nuxt 3', value: 'vue' }
-        // Refinement needed: differentiate Vue and Nuxt in answers?
-    };
+        case 'react':
+            // Vite React: template react-ts vs react
+            command = `npm create vite@latest ${TEMP_DIR_NAME} -- --template ${isTs ? 'react-ts' : 'react'} -y`;
+            break;
 
-    // Refined logic for Vue/Nuxt differentiation if needed.
-    // For now, let's treat 'vue' as Vite Vue 3 based on standard.
-    // Use 'nuxt' if we add it or if the user selects Nuxt specific.
-    // But 'vue' covers both in current CLI choices. Mmm. 
-    // Let's check index.js again.
+        case 'vue':
+            // Vite Vue: template vue-ts vs vue
+            command = `npm create vite@latest ${TEMP_DIR_NAME} -- --template ${isTs ? 'vue-ts' : 'vue'} -y`;
+            break;
 
-    let command = commands[stack];
+        case 'angular':
+            // Angular CLI
+            // --skip-install (fast)
+            // --defaults (use default config)
+            // --ssr=false (SPA mode)
+            // --style=scss
+            command = `npx -p @angular/cli@latest ng new ${TEMP_DIR_NAME} --skip-install --defaults --style=scss --ssr=false --package-manager npm`;
+            break;
 
-    // Special handling for shared keys if any.
-    // Actually, distinct keys: 'nestjs', 'laravel', 'nextjs', 'react', 'vue'.
-    // 'nuxt-laravel' is value for fullstack.
-    // 'nextjs-nestjs' is value for fullstack.
+        case 'nuxt-laravel':
+        case 'nuxt':
+            // Nuxt 3: nuxi init doesn't strongly enforce JS/TS via flag in same way, 
+            // but we can try to find if there is a preference.
+            // nuxi init defaults to a TsConfig present. User writes script setup lang="ts".
+            // We will just run standard init.
+            command = `npx -y nuxi@latest init ${TEMP_DIR_NAME} --packageManager npm`;
+            break;
 
-    // Fallback for fullstack combos -> Download the FRONTEND part mostly? Or both?
-    // "down code base" -> "viết cli để down thẳng giúp người dùng luôn".
-    // For fullstack, it's hard to download BOTH into root.
-    // Usually means monorepo or strict structure.
-    // Let's focus on single stack options first as per request.
-
-    if (stack === 'nuxt-laravel') {
-        // Maybe just Nuxt? Or warn complex?
-        // Let's skip complex fullstack for now or just do frontend.
-        console.log(chalk.yellow("Fullstack download not fully supported yet. Downloading Nuxt frontend..."));
-        command = `npx -y nuxi@latest init ${TEMP_DIR_NAME} --packageManager npm`;
+        default:
+            return false;
     }
 
     if (!command) {
         return false; // Not supported
     }
 
-    const spinner = ora(`Downloading ${stack} codebase... This may take a while.`).start();
+    const spinner = ora(`Downloading ${stack} codebase (${isTs ? 'TypeScript' : 'JavaScript'})... This may take a while.`).start();
 
     try {
         // 1. Run command to create in temp dir

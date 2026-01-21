@@ -129,19 +129,35 @@ async function runInit() {
             choices: [
                 { name: 'Next.js (React)', value: 'nextjs' },
                 { name: 'Vue 3 / Nuxt 3', value: 'vue' },
+                { name: 'Angular (v17+)', value: 'angular' },
                 { name: 'React (Vite)', value: 'react' },
             ],
         },
-        // Fullstack stack options
+        // Fullstack: Select Frontend Stack
         {
             type: 'list',
-            name: 'stack',
-            message: msg.techStackQuestion,
+            name: 'frontendStack',
+            message: lang === 'vi' ? 'Chon Frontend Tech Stack:' : 'Select Frontend Tech Stack:',
             when: (answers) => answers.type === 'fullstack',
             choices: [
-                { name: 'Next.js + NestJS', value: 'nextjs-nestjs' },
-                { name: 'Nuxt 3 + Laravel', value: 'nuxt-laravel' },
-                { name: 'React + Express', value: 'react-express' },
+                { name: 'Next.js (React)', value: 'nextjs' },
+                { name: 'Vue 3 / Nuxt 3', value: 'vue' },
+                { name: 'Angular (v17+)', value: 'angular' },
+                { name: 'React (Vite)', value: 'react' },
+            ],
+        },
+        // Fullstack: Select Backend Stack
+        {
+            type: 'list',
+            name: 'backendStack',
+            message: lang === 'vi' ? 'Chon Backend Tech Stack:' : 'Select Backend Tech Stack:',
+            when: (answers) => answers.type === 'fullstack',
+            choices: [
+                { name: 'NestJS (Node.js TypeScript)', value: 'nestjs' },
+                { name: 'Laravel (PHP)', value: 'laravel' },
+                { name: 'Go (Golang)', value: 'go' },
+                { name: 'Python (FastAPI)', value: 'python' },
+                { name: 'Node.js (Express)', value: 'express' },
             ],
         },
         // Mobile stack options
@@ -183,7 +199,25 @@ async function runInit() {
                 { name: 'Debugger (Bug Fixing)', value: 'debugger', checked: true },
             ],
         },
-        // NEW: Environment selection
+        // NEW: Language Variant selection (JS/TS) for relevant stacks
+        {
+            type: 'list',
+            name: 'languageVariant',
+            message: lang === 'vi' ? 'Chon ngon ngu code (Javascript / Typescript):' : 'Select code language (Javascript / Typescript):',
+            when: (answers) => {
+                const variants = ['nestjs', 'nextjs', 'react', 'vue', 'react-native', 'express']; // Angular is TS only
+                if (answers.type === 'fullstack') {
+                    return variants.includes(answers.frontendStack) || variants.includes(answers.backendStack);
+                }
+                return variants.includes(answers.stack);
+            },
+            choices: [
+                { name: 'TypeScript (Recommended)', value: 'ts' },
+                { name: 'JavaScript', value: 'js' },
+            ],
+            default: 'ts'
+        },
+        // Environment selection
         {
             type: 'list',
             name: 'environment',
@@ -205,23 +239,53 @@ async function runInit() {
     // Merge language into answers
     answers.language = lang;
 
+    // Standardize 'stack' for fullstack
+    if (answers.type === 'fullstack') {
+        answers.stack = [answers.frontendStack, answers.backendStack];
+    }
+
     const spinner = ora(msg.settingUp).start();
 
     try {
         const kitRoot = path.join(__dirname, '../templates');
         const currentDir = process.cwd();
 
-        // 0. Download Codebase (if requested and not Docker)
-        // If Docker is selected, we scaffold MINIMAL files in 'setup Docker' section instead of full download
-        // OR we could allow both? User request implies "use docker... kit will auto install src code base".
-        // The previous docker logic creates minimal src.
-        // The new downloader logic runs real CLI tools.
-        // If user wants Docker AND real codebase, we might want to run downloader THEN basic docker setup.
-        // But for "downloadCodebase: true" AND "environment: local", we definitely run downloader.
+        // 0. Download Codebase
         if (answers.downloadCodebase && answers.environment !== 'docker') {
-            // Stop spinner to show download process output
             spinner.stop();
-            const downloaded = await runDownload(answers.stack, currentDir);
+
+            // Handle multiple downloads for Fullstack
+            if (Array.isArray(answers.stack)) {
+                console.log(chalk.cyan(`\n> Downloading Fullstack Codebase...`));
+
+                // 1. Frontend
+                console.log(chalk.dim(`  - Frontend: ${answers.frontendStack}`));
+                // Create subfolder 'frontend' or just download to root? 
+                // Usually separates folders 'client' / 'server'.
+                // Let's force subdirectories for fullstack.
+                await fs.ensureDir(path.join(currentDir, 'frontend'));
+                const feDownloaded = await runDownload(answers.frontendStack, path.join(currentDir, 'frontend'), answers.languageVariant);
+
+                // 2. Backend
+                console.log(chalk.dim(`  - Backend: ${answers.backendStack}`));
+                await fs.ensureDir(path.join(currentDir, 'backend'));
+                const beDownloaded = await runDownload(answers.backendStack, path.join(currentDir, 'backend'), answers.languageVariant);
+
+                if (feDownloaded && beDownloaded) {
+                    console.log(chalk.green(`\n> Fullstack setup complete (frontend/ & backend/).`));
+                } else {
+                    console.log(chalk.yellow(`\n! Partial or failed download for fullstack.`));
+                }
+
+            } else {
+                // Single stack download
+                const downloaded = await runDownload(answers.stack, currentDir, answers.languageVariant);
+                if (downloaded) {
+                    console.log(chalk.green(`\n> Codebase setup complete.`));
+                } else {
+                    console.log(chalk.yellow(`\n! Codebase download skipped or not supported for ${answers.stack}.`));
+                }
+            }
             spinner.start();
 
             if (downloaded) {
@@ -255,20 +319,6 @@ async function runInit() {
             console.log(chalk.cyan(`\n> ${msg.dockerSetup}`));
 
             // 3. Basic Codebase Scaffolding for Docker
-            // If user did NOT download codebase, we scaffold minimal.
-            // If they DID download codebase (e.g. they modified logic to allow both), we shouldn't overwrite.
-            // But currently the condition above is exclusive (downloadCodebase && env !== docker).
-            // User request: "chọn docker... kit sẽ tự cài đặt sẵn src code base".
-            // So if Docker is chosen, we SHOULD probably also offer to download real codebase OR minimal.
-            // Let's stick to minimal scaffolding for Docker for now as per previous success, or use real downloader?
-            // "cài đặt sẵn src code base" usually means usable code.
-            // Let's enable real downloader for Docker users too if they want?
-            // Actually, `create-next-app` works fine with Docker if user configures it.
-            // But integrating `create-next-app` output with our generated Dockerfile might be tricky (paths etc).
-            // Let's keep separate for now:
-            // - Local: Real CLI download.
-            // - Docker: Our scaffolds (minimal working app) + Docker config.
-
             if (answers.downloadCodebase || answers.environment === 'docker') {
                 const scaffoldFiles = getScaffold(answers.stack);
                 for (const [filePath, content] of Object.entries(scaffoldFiles)) {
@@ -410,7 +460,8 @@ async function setupCursor(kitRoot, dest, answers) {
         }
     }
 
-    // 4. Copy Tech Stack (Strictly Selected)
+
+    // 4. Copy Tech Stack
     if (answers.stack) {
         const stackMapping = {
             'nestjs': 'backend-nestjs',
@@ -420,26 +471,20 @@ async function setupCursor(kitRoot, dest, answers) {
             'express': 'backend-express',
             'nextjs': 'frontend-nextjs',
             'vue': 'frontend-vue',
+            'angular': 'frontend-angular',
             'react': 'frontend-react',
             'flutter': 'mobile-flutter',
             'react-native': 'mobile-react-native',
             'swiftui': 'mobile-swiftui',
             'android': 'mobile-android',
-            'nextjs-nestjs': ['frontend-nextjs', 'backend-nestjs'],
-            'nuxt-laravel': ['frontend-vue', 'backend-laravel'],
-            'react-express': ['frontend-react', 'backend-express'],
+            // Composite keys removed, logic now handles arrays
         };
-        const skillName = stackMapping[answers.stack];
-        if (skillName) {
-            // Handle array or string
-            if (Array.isArray(skillName)) {
-                for (const name of skillName) {
-                    const src = path.join(skillsSrc, name);
-                    if (await fs.pathExists(src)) {
-                        await fs.copy(src, path.join(skillsDest, name));
-                    }
-                }
-            } else {
+
+        const stacksToCopy = Array.isArray(answers.stack) ? answers.stack : [answers.stack];
+
+        for (const stack of stacksToCopy) {
+            const skillName = stackMapping[stack];
+            if (skillName) {
                 const src = path.join(skillsSrc, skillName);
                 if (await fs.pathExists(src)) {
                     await fs.copy(src, path.join(skillsDest, skillName));
@@ -514,7 +559,7 @@ async function setupWindsurf(kitRoot, dest, answers) {
         }
     }
 
-    // Copy Stack Skills (same logic as Cursor)
+    // Copy Stack Skills
     if (answers.stack) {
         const stackMapping = {
             'nestjs': 'backend-nestjs',
@@ -524,22 +569,19 @@ async function setupWindsurf(kitRoot, dest, answers) {
             'express': 'backend-express',
             'nextjs': 'frontend-nextjs',
             'vue': 'frontend-vue',
+            'angular': 'frontend-angular',
             'react': 'frontend-react',
             'flutter': 'mobile-flutter',
             'react-native': 'mobile-react-native',
             'swiftui': 'mobile-swiftui',
             'android': 'mobile-android',
-            'nextjs-nestjs': ['frontend-nextjs', 'backend-nestjs'],
-            'nuxt-laravel': ['frontend-vue', 'backend-laravel'],
-            'react-express': ['frontend-react', 'backend-express'],
         };
-        const skillName = stackMapping[answers.stack];
-        if (skillName) {
-            if (Array.isArray(skillName)) {
-                for (const name of skillName) {
-                    await copySkill(skillsSrc, skillsDest, name);
-                }
-            } else {
+
+        const stacksToCopy = Array.isArray(answers.stack) ? answers.stack : [answers.stack];
+
+        for (const stack of stacksToCopy) {
+            const skillName = stackMapping[stack];
+            if (skillName) {
                 await copySkill(skillsSrc, skillsDest, skillName);
             }
         }
@@ -609,7 +651,7 @@ async function setupAntigravity(kitRoot, dest, answers) {
         }
     }
 
-    // Copy Stack Skills (Add missing logic)
+    // Copy Stack Skills
     if (answers.stack) {
         const stackMapping = {
             'nestjs': 'backend-nestjs',
@@ -619,22 +661,19 @@ async function setupAntigravity(kitRoot, dest, answers) {
             'express': 'backend-express',
             'nextjs': 'frontend-nextjs',
             'vue': 'frontend-vue',
+            'angular': 'frontend-angular',
             'react': 'frontend-react',
             'flutter': 'mobile-flutter',
             'react-native': 'mobile-react-native',
             'swiftui': 'mobile-swiftui',
             'android': 'mobile-android',
-            'nextjs-nestjs': ['frontend-nextjs', 'backend-nestjs'],
-            'nuxt-laravel': ['frontend-vue', 'backend-laravel'],
-            'react-express': ['frontend-react', 'backend-express'],
         };
-        const skillName = stackMapping[answers.stack];
-        if (skillName) {
-            if (Array.isArray(skillName)) {
-                for (const name of skillName) {
-                    await copySkill(skillsSrc, skillsDest, name);
-                }
-            } else {
+
+        const stacksToCopy = Array.isArray(answers.stack) ? answers.stack : [answers.stack];
+
+        for (const stack of stacksToCopy) {
+            const skillName = stackMapping[stack];
+            if (skillName) {
                 await copySkill(skillsSrc, skillsDest, skillName);
             }
         }
@@ -745,6 +784,7 @@ async function generateJsonConfig(dest, answers) {
         language: answers.language,
         projectType: answers.type,
         techStack: answers.stack || null,
+        languageVariant: answers.languageVariant || null,
         database: answers.database || null,
         roles: answers.roles || ['implementer'],
         focusModes: {
@@ -769,8 +809,9 @@ async function generateContextFile(dest, answers) {
 - **IDE:** ${answers.ide}
 - **Loại Dự Án:** ${answers.type}
 - **Tech Stack:** ${answers.stack || 'N/A'}
+- **Ngôn Ngữ Code:** ${answers.languageVariant ? (answers.languageVariant === 'ts' ? 'TypeScript' : 'JavaScript') : 'N/A'}
 - **Database:** ${answers.database || 'N/A'}
-- **Ngôn Ngữ:** Tiếng Việt
+- **Ngôn Ngữ Giao Tiếp:** Tiếng Việt
 
 ## Hướng Dẫn Cho AI Agent
 
@@ -795,6 +836,7 @@ Sử dụng các lệnh sau để chuyển chế độ:
 - **IDE:** ${answers.ide}
 - **Project Type:** ${answers.type}
 - **Tech Stack:** ${answers.stack || 'N/A'}
+- **Code Language:** ${answers.languageVariant ? (answers.languageVariant === 'ts' ? 'TypeScript' : 'JavaScript') : 'N/A'}
 - **Database:** ${answers.database || 'N/A'}
 - **Language:** English
 
