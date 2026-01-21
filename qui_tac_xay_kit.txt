@@ -1,0 +1,299 @@
+# Agent Kit Skill - Quy Tắc Xây Dựng Kit
+
+> **Version:** 2.0.0  
+> **Last Updated:** 2026-01-21  
+> **Status:** Active Development
+
+---
+
+## 1. Tổng Quan
+
+### 1.1 Mục Tiêu
+Xây dựng bộ kit để training skill cho AI Agent, giúp code ra những project:
+- Bài bản, có cấu trúc clean code
+- Dễ dàng scale và mở rộng
+- Tuân theo rules, skills, quy ước chung của project
+
+### 1.2 IDE Hỗ Trợ
+| IDE | Config Location | Status |
+|-----|-----------------|--------|
+| Cursor | `.cursor/rules/`, `.cursorrules` | ✅ Active |
+| Antigravity | `.agent/rules/`, `.agent/skills/` | ✅ Active |
+| Windsurf | `.windsurf/rules/` | ✅ Active |
+
+---
+
+## 2. CLI Flow
+
+### 2.1 Installation
+```bash
+npm install octotech-agent-skill
+# hoặc
+npx agent-kit init
+```
+
+### 2.2 Interactive Questions
+
+#### Q1: IDE Selection
+```
+? Which IDE are you using?
+  ○ Cursor (Recommended)
+  ○ Windsurf (Codeium)
+  ○ Antigravity (Google)
+```
+
+#### Q2: Language Selection
+```
+? Preferred language / Ngôn ngữ ưa thích:
+  ○ English
+  ○ Tiếng Việt
+```
+> **Rule:** Agent PHẢI tuyệt đối tuân theo ngôn ngữ đã chọn trong mọi response.
+
+#### Q3: Role Selection
+```
+? Select AI Agent roles: (multiple)
+  ☑ Implementer (Default)
+  ☑ Architect (System Design)
+  ☑ Reviewer (Code Review)
+  ☑ Debugger (Bug Fixing)
+```
+
+#### Q4: Project Type
+```
+? What type of project is this?
+  ○ Backend API
+  ○ Frontend Web
+  ○ DevOps / Infrastructure
+  ○ Fullstack
+  ○ Mobile App
+```
+
+#### Q5: Tech Stack
+```
+? Select your primary Tech Stack:
+  # Backend options
+  ○ NestJS (Node.js TypeScript)
+  ○ Laravel (PHP)
+  ○ Go (Golang)
+  ○ Python (FastAPI)
+  ○ Node.js (Express)
+  
+  # Frontend options
+  ○ Next.js (React)
+  ○ Vue 3 / Nuxt 3
+  ○ React (Vite)
+  
+  # Mobile options
+  ○ Flutter (Dart)
+  ○ React Native
+  ○ SwiftUI (iOS)
+  ○ Kotlin (Android)
+```
+
+#### Q6: Database
+```
+? Select your Database:
+  ○ PostgreSQL
+  ○ MySQL
+  ○ MongoDB
+  ○ SQLite
+  ○ Other / None
+```
+
+#### Q7: Codebase Template (Optional)
+```
+? Download starter codebase template?
+  ○ Yes - Download recommended boilerplate
+  ○ No - I have existing code
+```
+
+---
+
+## 3. Configuration Output
+
+### 3.1 Generated File: `agent-kit-skill.json`
+```json
+{
+  "version": "1.0.0",
+  "ide": "cursor",
+  "language": "vi",
+  "projectType": "backend",
+  "techStack": "nestjs",
+  "database": "postgresql",
+  "roles": ["implementer", "architect", "reviewer", "debugger"],
+  "focusModes": {
+    "enabled": true,
+    "default": "backend",
+    "available": ["backend", "frontend", "devops", "fullstack", "mobile", "debug", "reviewer", "architect"]
+  },
+  "createdAt": "2024-01-20T10:00:00Z",
+  "updatedAt": "2024-01-20T10:00:00Z"
+}
+```
+
+### 3.2 Update Config
+```bash
+# Sau khi edit agent-kit-skill.json, chạy:
+agent-kit update
+```
+
+---
+
+## 4. Domain Rules
+
+### 4.1 Frontend Rules
+| Category | Rule |
+|----------|------|
+| **Colors** | Sử dụng CSS Variables, không hardcode màu |
+| **UI/UX** | Mobile-first, skeleton loading, error boundaries |
+| **State** | Giới hạn global state (chỉ auth, theme, i18n) |
+| **Performance** | Lazy loading, code splitting, image optimization |
+| **Icons** | Hạn chế sử dụng, chỉ dùng icons cần thiết |
+| **Naming** | Components: PascalCase, Utils: camelCase |
+| **Global Config** | Tạo shared config để tái sử dụng |
+
+### 4.2 Backend Rules
+| Category | Rule |
+|----------|------|
+| **API** | RESTful chuẩn, HTTP verbs đúng nghĩa |
+| **Response** | Format thống nhất: `{ success, data, meta, error, timestamp }` |
+| **Common** | Xây dựng đầy đủ utils, helpers, constants dùng chung |
+| **Naming** | Endpoints: kebab-case, DB: snake_case, Code: camelCase |
+| **Separation** | Business logic tách biệt khỏi Controllers |
+| **Scalability** | Clean Architecture, Modular design |
+
+### 4.3 DevOps Rules
+| Category | Rule |
+|----------|------|
+| **Docker** | Multi-stage builds, non-root user, health checks |
+| **CI/CD** | Lint → Test → Build → Security → Deploy |
+| **Secrets** | Environment variables, never hardcode |
+| **Monitoring** | Structured logging, /health endpoint bắt buộc |
+| **IaC** | Terraform/Pulumi cho cloud resources |
+
+### 4.4 Fullstack Rules
+| Category | Rule |
+|----------|------|
+| **API Contract** | OpenAPI spec trước khi code |
+| **Shared Types** | Generate types từ spec cho cả FE/BE |
+| **Monorepo** | apps/web, apps/api, packages/shared |
+| **Auth Flow** | JWT + refresh token, HttpOnly cookies |
+
+### 4.5 Mobile Rules
+| Category | Rule |
+|----------|------|
+| **Architecture** | Clean Architecture, BLoC/MVVM |
+| **Offline** | Offline-first với local database |
+| **Performance** | List virtualization, image caching |
+| **Accessibility** | Semantic labels, focus indicators |
+
+---
+
+## 5. Focus Modes (Training Scripts)
+
+### 5.1 Syntax
+```
+/[mode]
+```
+
+### 5.2 Available Modes
+
+| Mode | Trigger | Purpose |
+|------|---------|---------|
+| **Backend** | `/backend` | API development, database design |
+| **Frontend** | `/frontend` | UI/UX, components, state management |
+| **DevOps** | `/devops` | Docker, CI/CD, infrastructure |
+| **Fullstack** | `/fullstack` | End-to-end development |
+| **Mobile** | `/mobile` | Mobile app development |
+| **Debug** | `/debug` | Bug fixing, root cause analysis |
+| **Reviewer** | `/reviewer` | Code review, quality check |
+| **Architect** | `/architect` | System design, architecture decisions |
+| **Implementer** | `/implementer` | Feature implementation |
+
+### 5.3 Behavior Khi Kích Hoạt Mode
+1. **Load Priority Rules** - Rules của mode được load trước
+2. **Mindset Shift** - Agent tư duy theo góc độ của role
+3. **Response Format** - Output theo format chuẩn của mode
+4. **Checklist Apply** - Sử dụng checklist tương ứng
+
+---
+
+## 6. Knowledge Base
+
+### 6.1 Core Knowledge
+- **Design Patterns** - Singleton, Factory, Repository, Strategy...
+- **Clean Architecture** - Layers, Dependency Rule, SOLID
+- **RESTful API** - HTTP methods, status codes, response format
+
+### 6.2 Technology Conventions
+| Technology | Conventions |
+|------------|-------------|
+| NestJS | Modules, DTOs, Services, Repositories |
+| Laravel | Eloquent, Migrations, Requests, Resources |
+| Golang | Packages, Interfaces, Error handling |
+| React | Hooks, Components, State management |
+| Next.js | App Router, Server Components, API Routes |
+| Vue.js | Composition API, Pinia, Nuxt |
+| Flutter | Widgets, BLoC, Clean Architecture |
+| SwiftUI | Views, ObservableObject, Combine |
+
+### 6.3 Knowledge Loading Rule
+> **CRITICAL:** Khi nạp knowledge cho Agent, Agent PHẢI tuyệt đối tuân theo và sử dụng đúng cấu trúc đã định nghĩa.
+
+---
+
+## 7. File Structure
+
+```
+agent-kit-skill/
+├── cli/
+│   ├── src/
+│   │   └── index.js           # CLI entry point
+│   └── templates/
+│       ├── rules/             # Domain rules
+│       │   ├── frontend/
+│       │   ├── backend/
+│       │   ├── devops/
+│       │   ├── fullstack/
+│       │   └── mobile/
+│       ├── workflows/         # Focus modes
+│       │   ├── focus-backend.md
+│       │   ├── focus-frontend.md
+│       │   ├── focus-debug.md
+│       │   ├── focus-reviewer.md
+│       │   └── focus-architect.md
+│       ├── knowledge/         # Knowledge base
+│       │   ├── design-patterns.md
+│       │   └── clean-architecture.md
+│       └── skills/            # IDE-specific skills
+├── .cursor/                   # Cursor IDE config
+├── .windsurf/                 # Windsurf IDE config
+├── .agent/                    # Antigravity config
+└── agent-kit-skill.json       # User config (generated)
+```
+
+---
+
+## 8. Expansion Notes
+
+### 8.1 Pending Questions (Có thể bổ sung)
+- [ ] CI/CD platform (GitHub Actions, GitLab CI, Jenkins)
+- [ ] Cloud provider (AWS, GCP, Azure)
+- [ ] Testing framework preferences
+- [ ] Linting/formatting tools
+
+### 8.2 Pending Codebase Templates
+- [ ] NestJS boilerplate
+- [ ] Laravel 12 starter
+- [ ] Next.js 15 template
+- [ ] Flutter clean architecture template
+
+---
+
+## 9. Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 2.0.0 | 2026-01-21 | Restructured format, added Focus Modes |
+| 1.0.0 | Initial | Basic concept |

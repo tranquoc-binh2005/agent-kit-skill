@@ -38,6 +38,38 @@ Skills are automatically loaded from `.cursor/skills/`. Use `/` in chat to manua
 | `role-architect` | System Design mode |
 | `role-reviewer` | Code Review mode |
 | `role-debugger` | Bug Fixing mode |
+| `role-implementer` | Implementation mode |
+
+---
+
+## FOCUS MODES
+
+Use these commands to switch focus:
+- `/backend` - API and database development
+- `/frontend` - UI/UX development
+- `/devops` - Infrastructure and deployment
+- `/debug` - Bug fixing mode
+- `/reviewer` - Code review mode
+- `/architect` - System design mode
+
+---
+
+## RULES
+
+Domain-specific rules are in `.cursor/rules/`:
+- `frontend/general.md` - Frontend conventions
+- `backend/general.md` - Backend conventions
+- `devops/general.md` - DevOps standards
+- `fullstack/general.md` - Fullstack patterns
+- `mobile/general.md` - Mobile development
+
+---
+
+## KNOWLEDGE BASE
+
+Reference documentation in `.cursor/knowledge/`:
+- `design-patterns.md` - Common design patterns
+- `clean-architecture.md` - Clean Architecture guide
 
 ---
 
@@ -45,25 +77,7 @@ Skills are automatically loaded from `.cursor/skills/`. Use `/` in chat to manua
 
 1. **For any coding task:** Skills are applied automatically based on context.
 2. **To invoke manually:** Type `/` in chat and search for skill name.
-3. **Project config:** Create `cursor-project-config.md` in root for persistent settings.
-
----
-
-## PROJECT CONFIG TEMPLATE
-
-Create `cursor-project-config.md` in your project root:
-
-```yaml
----
-project_type: backend
-tech_stack: nestjs
-language: typescript
-role_mode: implementer
----
-
-# Project Context
-Describe your project here for better AI understanding.
-```
+3. **Project config:** Check `agent-kit-skill.json` for project settings.
 
 ---
 
