@@ -23,6 +23,7 @@ Agent Kit Skill helps you:
 | **Focus Modes** | Deep specialization with `/backend`, `/frontend`, `/debug`, etc. |
 | **Role-Based Agents** | Architect, Reviewer, Debugger, Implementer modes |
 | **Multi-Language** | English and Vietnamese support |
+| **Docker Environment** | Auto-generate Dockerfile, Compose, and Codebase Scaffold |
 | **Template Prompts** | Ready-to-use prompt examples in config file |
 
 ---
@@ -73,6 +74,9 @@ agent-kit init
 ? Select your Tech Stack: NestJS / Laravel / Go / Next.js / Vue / Flutter...
 ? Select your Database: PostgreSQL / MySQL / MongoDB / SQLite
 ? Select AI Agent roles: Implementer, Architect, Reviewer, Debugger
+? Use Environment (Docker or Local)?
+  > Docker: Auto-generates Dockerfile, docker-compose.yml and scaffolds a starter codebase.
+  > Local: Basic setup, you configure the environment.
 ```
 
 ### 3. Start Using
@@ -128,6 +132,16 @@ project/
 │   ├── workflows/
 │   └── knowledge/
 └── agent-kit-skill.json
+```
+
+### Docker Environment Files
+If **Docker** environment is selected:
+```
+project/
+├── Dockerfile                # Tech-stack specific (Node, PHP, Go, etc.)
+├── docker-compose.yml        # App + Database configuration
+├── src/                      # Scaffolding (main.ts, index.php, etc.)
+├── package.json              # Dependencies (or go.mod, composer.json)
 ```
 
 ---

@@ -7,6 +7,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import ora from 'ora';
+import { generateDockerfile, generateDockerCompose, getScaffold } from './docker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,10 +24,12 @@ const messages = {
         techStackQuestion: 'Select your primary Tech Stack:',
         databaseQuestion: 'Select your Database:',
         rolesQuestion: 'Include specialized Roles (Architect, Reviewer, Debugger)?',
+        envQuestion: 'Use Environment (Docker or Local)?',
         downloadQuestion: 'Download starter codebase template?',
         settingUp: 'Setting up your Agent Kit...',
         success: 'Setup complete! Agent Kit is ready.',
         nextSteps: 'Next Steps:',
+        dockerSetup: 'Docker environment setup: Dockerfile, docker-compose.yml created.',
         failed: 'Setup failed!',
         configCreated: 'Config file created: agent-kit-skill.json',
     },
@@ -38,10 +41,12 @@ const messages = {
         techStackQuestion: 'Chon Tech Stack chinh:',
         databaseQuestion: 'Chon Database:',
         rolesQuestion: 'Bao gom cac Vai tro chuyen biet (Architect, Reviewer, Debugger)?',
+        envQuestion: 'Su dung moi truong nao (Docker hay Local)?',
         downloadQuestion: 'Tai template codebase mau?',
         settingUp: 'Dang cai dat Agent Kit...',
         success: 'Cai dat hoan tat! Agent Kit da san sang.',
         nextSteps: 'Buoc tiep theo:',
+        dockerSetup: 'Cau hinh Docker: Dockerfile, docker-compose.yml da duoc tao.',
         failed: 'Cai dat that bai!',
         configCreated: 'File config da tao: agent-kit-skill.json',
     }
@@ -177,6 +182,16 @@ async function runInit() {
                 { name: 'Debugger (Bug Fixing)', value: 'debugger', checked: true },
             ],
         },
+        // NEW: Environment selection
+        {
+            type: 'list',
+            name: 'environment',
+            message: msg.envQuestion,
+            choices: [
+                { name: lang === 'vi' ? 'Docker Environment (Tuy chon)' : 'Docker Environment (Preferred)', value: 'docker' },
+                { name: lang === 'vi' ? 'Local Host (Tu cau hinh)' : 'Local Host (Self-configured)', value: 'local' },
+            ],
+        },
         // Codebase download option
         {
             type: 'confirm',
@@ -204,6 +219,35 @@ async function runInit() {
             await setupAntigravity(kitRoot, currentDir, answers);
         }
 
+        // Setup Docker if requested
+        if (answers.environment === 'docker' && answers.stack) {
+            const projectName = path.basename(currentDir);
+
+            // 1. Generate Dockerfile
+            const dockerfileContent = generateDockerfile(answers.stack);
+            await fs.outputFile(path.join(currentDir, 'Dockerfile'), dockerfileContent);
+
+            // 2. Generate Docker Compose
+            const composeContent = generateDockerCompose(projectName, answers.stack, answers.database);
+            await fs.outputFile(path.join(currentDir, 'docker-compose.yml'), composeContent);
+
+            console.log(chalk.cyan(`\n> ${msg.dockerSetup}`));
+
+            // 3. Basic Codebase Scaffolding (if downloadCodebase is true OR strictly for Docker to run)
+            if (answers.downloadCodebase || answers.environment === 'docker') {
+                const scaffoldFiles = getScaffold(answers.stack);
+                for (const [filePath, content] of Object.entries(scaffoldFiles)) {
+                    const targetPath = path.join(currentDir, filePath);
+                    if (!await fs.pathExists(targetPath)) { // Don't overwrite existing code
+                        await fs.outputFile(targetPath, content);
+                    }
+                }
+                if (Object.keys(scaffoldFiles).length > 0) {
+                    console.log(chalk.dim('  - Scaffolding basic app structure...'));
+                }
+            }
+        }
+
         // Generate JSON config file
         await generateJsonConfig(currentDir, answers);
 
@@ -228,7 +272,7 @@ async function runInit() {
             console.log('3. Edit agent-kit-skill.json to customize settings');
         }
 
-        if (answers.downloadCodebase) {
+        if (answers.downloadCodebase && answers.environment !== 'docker') {
             console.log(chalk.yellow('\n!  Codebase download feature coming soon!'));
         }
 
@@ -236,7 +280,7 @@ async function runInit() {
         spinner.fail(chalk.red(msg.failed));
         console.error(error);
     }
-};
+}
 
 // Update command - reload config
 program
@@ -265,6 +309,7 @@ program
                 database: config.database,
                 roles: config.roles,
                 language: config.language,
+                // Assume docker is managed separately on init, or could add stored config.environment later
             };
 
             if (config.ide === 'cursor') {
