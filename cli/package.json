@@ -1,6 +1,6 @@
 {
   "name": "octotech-agent-kit",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "CLI to setup AI Agent Rules & Skills",
   "main": "src/index.js",
   "type": "module",
