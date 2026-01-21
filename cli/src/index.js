@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import ora from 'ora';
 import { generateDockerfile, generateDockerCompose, getScaffold } from './docker.js';
+import { downloadCodebase as runDownload } from './downloader.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -210,6 +211,26 @@ async function runInit() {
         const kitRoot = path.join(__dirname, '../templates');
         const currentDir = process.cwd();
 
+        // 0. Download Codebase (if requested and not Docker)
+        // If Docker is selected, we scaffold MINIMAL files in 'setup Docker' section instead of full download
+        // OR we could allow both? User request implies "use docker... kit will auto install src code base".
+        // The previous docker logic creates minimal src.
+        // The new downloader logic runs real CLI tools.
+        // If user wants Docker AND real codebase, we might want to run downloader THEN basic docker setup.
+        // But for "downloadCodebase: true" AND "environment: local", we definitely run downloader.
+        if (answers.downloadCodebase && answers.environment !== 'docker') {
+            // Stop spinner to show download process output
+            spinner.stop();
+            const downloaded = await runDownload(answers.stack, currentDir);
+            spinner.start();
+
+            if (downloaded) {
+                console.log(chalk.green(`\n> Codebase setup complete.`));
+            } else {
+                console.log(chalk.yellow(`\n! Codebase download skipped or not supported for ${answers.stack}.`));
+            }
+        }
+
         // Setup based on IDE
         if (answers.ide === 'cursor') {
             await setupCursor(kitRoot, currentDir, answers);
@@ -233,7 +254,21 @@ async function runInit() {
 
             console.log(chalk.cyan(`\n> ${msg.dockerSetup}`));
 
-            // 3. Basic Codebase Scaffolding (if downloadCodebase is true OR strictly for Docker to run)
+            // 3. Basic Codebase Scaffolding for Docker
+            // If user did NOT download codebase, we scaffold minimal.
+            // If they DID download codebase (e.g. they modified logic to allow both), we shouldn't overwrite.
+            // But currently the condition above is exclusive (downloadCodebase && env !== docker).
+            // User request: "chọn docker... kit sẽ tự cài đặt sẵn src code base".
+            // So if Docker is chosen, we SHOULD probably also offer to download real codebase OR minimal.
+            // Let's stick to minimal scaffolding for Docker for now as per previous success, or use real downloader?
+            // "cài đặt sẵn src code base" usually means usable code.
+            // Let's enable real downloader for Docker users too if they want?
+            // Actually, `create-next-app` works fine with Docker if user configures it.
+            // But integrating `create-next-app` output with our generated Dockerfile might be tricky (paths etc).
+            // Let's keep separate for now:
+            // - Local: Real CLI download.
+            // - Docker: Our scaffolds (minimal working app) + Docker config.
+
             if (answers.downloadCodebase || answers.environment === 'docker') {
                 const scaffoldFiles = getScaffold(answers.stack);
                 for (const [filePath, content] of Object.entries(scaffoldFiles)) {
@@ -273,7 +308,9 @@ async function runInit() {
         }
 
         if (answers.downloadCodebase && answers.environment !== 'docker') {
-            console.log(chalk.yellow('\n!  Codebase download feature coming soon!'));
+            // Already handled download above.
+        } else if (answers.downloadCodebase && answers.environment === 'docker') {
+            // Handled by scaffold.
         }
 
     } catch (error) {
@@ -309,7 +346,7 @@ program
                 database: config.database,
                 roles: config.roles,
                 language: config.language,
-                // Assume docker is managed separately on init, or could add stored config.environment later
+                // assume docker managed separately
             };
 
             if (config.ide === 'cursor') {
